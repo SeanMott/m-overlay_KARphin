@@ -1,19 +1,19 @@
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/paypalme/bkacjios)
+[![Support the OG Author of M-Overlay - Bkacjios](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/paypalme/bkacjios)
 
-# m-overlay
-*A gamecube controller input display, for use with Dolphin specifically.*
+# K-overlay
+*A gamecube controller input display, for use with KARphin specifically.*
 
 ![M'Overlay in use](https://i.imgur.com/VZWta8H.gif)
 
 ## Downloads - ([patch notes](https://github.com/bkacjios/m-overlay/releases/latest))
 
 * Windows (x64)
-  - Installer: [m-overlay-x64-installer.exe](https://github.com/bkacjios/m-overlay/releases/latest/download/m-overlay-x64-installer.exe)
-  - Portable: [m-overlay-x64-portable.zip](https://github.com/bkacjios/m-overlay/releases/latest/download/m-overlay-x64-portable.zip)
-* Linux ([LÖVE 11.3](https://love2d.org/) - x64)
-  - Love2D: [m-overlay-x64-installer.love](https://github.com/bkacjios/m-overlay/releases/latest/download/m-overlay-x64-installer.love)
-* macOS
-  - [Currently unsupported and probably never will be](https://github.com/bkacjios/m-overlay/issues/97)
+  - Installer MIA for right now
+  - Portable: [k-overlay-x64-portable.zip](https://github.com/SeanMott/m-overlay_KARphin/releases/download/rolling/K-Overay_Windows.zip)
+
+## Credits 
+
+A **very** special thanks to "benperch - game console preservationist" for just showing up and getting this working for us.
 
 ## Usage
 
@@ -40,6 +40,10 @@
 * Raptr Desktop App (AMD Gaming Evolved)
 
 ### Supported Gamecube games:
+
+* Kirby Air Ride (NTSC-U v1.0, NTSC-J v1.0)
+  - [Kirby Air Ride Deluxe](https://github.com/UnclePunch/KAR-Deluxe/releases/tag/v1.0.3)
+  - [Kirby Air Ride Ignition]()
 
 * Billy Hatcher and the Giant Egg (NTSC-U)
 * Crash Bandicoot: The Wrath of Cortex (NTSC-U v1.0)
@@ -74,8 +78,6 @@
   - [Randomizer](https://github.com/randovania/randovania)
 * Pac-Man World 2 (NTSC-U v1.0)
 * Paper Mario - The Thousand-Year Door (NTSC-U v1.0, NTSC-J v1.0)
-* Kirby Air Ride (NTSC-U v1.0, NTSC-J v1.0)
-  - [UnclePunch Hack Pack](https://www.kirbyairri.de/hpinfo.html)
 * Pikmin (NTSC-U v1.0, NTSC-U v1.1)
 * Pikmin 2 (NTSC-U v1.0, DEMO v1.0)
   - [Pikmin 251](https://www.youtube.com/watch?v=7ylu9ogW88w)
