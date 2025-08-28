@@ -204,6 +204,7 @@ function MEMORY:hasPermissions()
 end
 
 local valid_process_names = {
+	["KARphin.exe"] = true,
 	["Dolphin.exe"] = true,
 	["Slippi Dolphin.exe"] = true,
 	["Slippi_Dolphin.exe"] = true,
