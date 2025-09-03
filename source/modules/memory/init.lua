@@ -522,8 +522,8 @@ function memory.findGame()
 
 	-- Force the GAMEID and VERSION to be Melee 1.02, since Fizzi seems to be using the gameid address space for something..
 	if not memory.isSupportedGame(gid, version) and gid ~= GAME_NONE and PANEL_SETTINGS:IsSlippiNetplay() then
-		gid = "GALE01"
-		version = 0x02
+		gid = "GKYE01"
+		version = "0"
 	end
 
 	-- When playing Slippi netplay.. the game ID can and will change..
