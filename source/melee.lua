@@ -902,13 +902,13 @@ local STAGE_SERIES = {
 	[0x20] = "The Legend of Zelda", -- Underground Maze
 	[0x21] = "Metroid", -- Escape Zebes
 	[0x22] = "F-Zero", -- F-Zero Grand Prix
-	[0x26] = "Super Smash Bros", -- Trophy Collection
-	[0x27] = "Super Smash Bros", -- Race to the Finish
-	[0x42] = "Super Smash Bros", -- All-Star Rest Area
-	[0x43] = "Super Smash Bros", -- Home-Run Contest
-	[0x44] = "Super Mario", -- Trophy Tussel - Goomba
-	[0x45] = "Pokémon", -- Trophy Tussel - Entei
-	[0x46] = "The Legend of Zelda", -- Trophy Tussel - Majora's Mask
+	[0x26] = "Trophy Collection",
+	[0x27] = "Race to the Finish",
+	[0x42] = "All-Star Rest Area",
+	[0x43] = "Home-Run Contest",
+	[0x44] = "Trophy Tussle - Goomba",
+	[0x45] = "Trophy Tussle - Entei",
+	[0x46] = "Trophy Tussle - Majora's Mask",
 
 
 }
@@ -1183,7 +1183,7 @@ function melee.isInGame()
 		--return memory.scene.minor % 2 == 0
 		return true
 	end
-	if PANEL_SETTINGS:IsSlippiReplay() and memory.scene.major == SCENE_START_MATCH then
+	if false and memory.scene.major == SCENE_START_MATCH then
 		return memory.scene.minor == SCENE_START_MATCH_INGAME
 	end
 	if memory.scene.major == SCENE_VS_MODE or memory.scene.major == SCENE_VS_ONLINE then

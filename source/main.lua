@@ -24,7 +24,7 @@ local memory = require("memory")
 local notification = require("notification")
 
 local overlay = require("overlay")
-local music = require("music")
+-- Music feature removed
 
 local color = require("util.color")
 local gui = require("gui")
@@ -39,7 +39,7 @@ local WAITING_FONT = graphics.newFont("fonts/melee-bold.otf", 24)
 local DEBUG_FONT = graphics.newFont("fonts/melee-bold.otf", 12)
 
 local GRADIENT = newImage("textures/gui/gradient.png")
-local DOLPHIN = newImage("textures/dolphin.png")
+local DOLPHIN = newImage("textures/dolphin.png") -- KARphin icon
 local GAME = newImage("textures/game.png")
 local MELEE = newImage("textures/meleedisk.png")
 local MELEELABEL = newImage("textures/meleedisklabel.png")
@@ -109,11 +109,11 @@ function love.load(args, unfilteredArg)
 
 	melee.loadTextures()
 	gui.init()
-	music.init()
+	-- Music feature removed
 	overlay.init()
 
 	if memory.hasPermissions() then
-		love.updateTitle("K'Overlay - Waiting for Dolphin...")
+		love.updateTitle("K'Overlay - Waiting for KARphin...")
 	else
 		love.updateTitle("K'Overlay - Invalid permissions...")
 		--notification.error()
@@ -216,8 +216,8 @@ do
 end
 
 function love.update(dt)
-	music.update()
-	memory.update() -- Look for Dolphin.exe
+	-- Music feature removed
+	memory.update() -- Look for KARphin.exe
 	notification.update(8, 0)
 	gui.update(dt)
 end
@@ -347,21 +347,8 @@ function love.drawControllerOverlay()
 		controller = memory.controller[port]
 	end
 
-	if PANEL_SETTINGS:IsSlippiReplay() and melee.isInGame() then
-		local player = memory.player[port]
-
-		if not player then return end
-
-		local entity
-
-		if player.transformed == 256 then
-			-- If the player has the "transformed" flag set, assume they are now controlling the "partner" entity
-			entity = player.partner
-		else
-			entity = player.entity
-		end
-		
-		controller = entity.controller
+	if false and melee.isInGame() then
+		-- Slippi replay disabled
 	end
 
 	if controller then
@@ -384,7 +371,7 @@ function love.drawControllerOverlay()
 			graphics.setFont(DEBUG_FONT)
 
 			if PANEL_SETTINGS:IsDebuggingTriggers() then
-				if PANEL_SETTINGS:IsSlippiReplay() and melee.isInGame() then
+				if false and melee.isInGame() then
 					a = controller.analog and controller.analog.float or 0
 
 					local stra = ("A: % f"):format(a)
@@ -673,9 +660,9 @@ function love.draw()
 	if memory.initialized and memory.ingame and memory.game and memory.controller then
 		love.drawControllerOverlay()
 	else
-		if memory.hooked then
+		if memory.isHookedForUI() then
 			love.drawTrobber(true)
-			local slippi = PANEL_SETTINGS:IsSlippiNetplay() or PANEL_SETTINGS:IsSlippiReplay()
+			local slippi = false -- (Slippi UI disabled)
 			love.drawNotificationText(slippi and "Waiting for melee" or "Waiting for game")
 		else
 			love.drawTrobber()
@@ -717,7 +704,7 @@ function love.draw()
 		graphics.setShader()
 	end]]
 	
-	music.draw()
+	-- Music feature removed
 
 	local time = love.timer.getTime()
 

@@ -186,8 +186,6 @@ local function drawButtons(buttons, controller)
 
 			if texture.PRESSED and bit.band(controller.buttons.pressed, flag) == flag then -- Check if the button is pressed
 				graphics.easyDraw(texture.PRESSED, pos.x, pos.y, 0, 88, 88)
-			elseif button == "R" and tr > 0 and tr < 0.5 then
-				graphics.easyDraw(BUTTON_TEXTURES.R.PRESSED, pos.x, pos.y, 0, 88, 88)
 			else
 				local text = SETTINGS:IsHighContrast() and texture.FILLED or texture.OUTLINE
 				if text then

@@ -3,7 +3,8 @@ local PANEL = class.create("Settings", "BasePanel")
 local log = require("log")
 local json = require("serializer.json")
 local notification = require("notification")
-local music = require("music")
+local gui = require("gui")
+-- Music feature removed
 local overlay = require("overlay")
 
 require("extensions.math")
@@ -49,10 +50,7 @@ function PANEL:Settings()
 	self.COLORSELECT:Center()
 	self.COLORSELECT:SetVisible(false)
 
-	self.MUSICPROBABILITY = self:Add("MusicProbability")
-	self.MUSICPROBABILITY:SetSize(512, 256)
-	self.MUSICPROBABILITY:Center()
-	self.MUSICPROBABILITY:SetVisible(false)
+	-- Music feature removed
 
 	self.DEBUG_INPUTS_CONFIG = self:Add("DebugInputs")
 	self.DEBUG_INPUTS_CONFIG:SetSize(156, 164)
@@ -63,13 +61,13 @@ function PANEL:Settings()
 		self.MAIN:SetVisible(true)
 	end	
 
-	self.MAIN = self:Add("TabbedPanel")
+	self.MAIN = self:Add("Panel")
 	self.MAIN:SetSize(296 + 32, 196)
 	self.MAIN:DockPadding(0, 0, 0, 0)
 	self.MAIN:Center()
 
-	self.GENERAL = self.MAIN:AddTab("General", "textures/gui/cog.png", true)
-
+	-- Create main content panels (formerly General tab)
+	self.GENERAL = self.MAIN
 	self.GENERAL.LEFT = self.GENERAL:Add("Panel")
 	self.GENERAL.LEFT:SetWidth(160)
 	self.GENERAL.LEFT:Dock(DOCK_LEFT)
@@ -80,144 +78,139 @@ function PANEL:Settings()
 	self.GENERAL.RIGHT:Dock(DOCK_RIGHT)
 	self.GENERAL.RIGHT:SetDrawPanel(false)
 
-	self.MELEE = self.MAIN:AddTab("Melee", "textures/gui/melee.png")
+	-- Disable Melee tab entirely
+	-- self.MELEE = self.MAIN:AddTab("Melee", "textures/gui/melee.png")
+	-- self.MELEE.LEFT = self.MELEE:Add("Panel")
+	-- self.MELEE.LEFT:SetWidth(160)
+	-- self.MELEE.LEFT:Dock(DOCK_LEFT)
+	-- self.MELEE.LEFT:SetDrawPanel(false)
+	-- self.MELEE.RIGHT = self.MELEE:Add("Panel")
+	-- self.MELEE.RIGHT:SetWidth(160)
+	-- self.MELEE.RIGHT:Dock(DOCK_RIGHT)
+	-- self.MELEE.RIGHT:SetDrawPanel(false)
 
-	self.MELEE.LEFT = self.MELEE:Add("Panel")
-	self.MELEE.LEFT:SetWidth(160)
-	self.MELEE.LEFT:Dock(DOCK_LEFT)
-	self.MELEE.LEFT:SetDrawPanel(false)
+	-- Disable Slippi tab entirely
+	-- self.SLIPPI = self.MAIN:AddTab("Slippi", "textures/gui/slippi.png")
+	-- self.SLIPPI.LEFT = self.SLIPPI:Add("Panel")
+	-- self.SLIPPI.LEFT:SetWidth(160)
+	-- self.SLIPPI.LEFT:Dock(DOCK_LEFT)
+	-- self.SLIPPI.LEFT:SetDrawPanel(false)
+	-- self.SLIPPI.ICON = self.SLIPPI.LEFT:Add("Image")
+	-- self.SLIPPI.ICON:SetImage("textures/slippi.png")
+	-- self.SLIPPI.ICON:SetPos(2, 0)
+	-- self.SLIPPI.ICON:SetSize(155, 112)
+	-- self.SLIPPI.ICON:CenterVertical()
+	-- self.SLIPPI.RIGHT = self.SLIPPI:Add("Panel")
+	-- self.SLIPPI.RIGHT:SetWidth(160)
+	-- self.SLIPPI.RIGHT:Dock(DOCK_RIGHT)
+	-- self.SLIPPI.RIGHT:SetDrawPanel(false)
+	-- self.SLIPPI.MODE = self.SLIPPI.RIGHT:Add("RadioPanel")
+	-- self.SLIPPI.MODE:SetText("Slippi mode")
+	-- self.SLIPPI.MODE:DockMargin(0,0,0,0)
+	-- self.SLIPPI.MODE:Dock(DOCK_FILL)
+	-- self.SLIPPI.MODE:SetWidth(100)
+	-- local off = self.SLIPPI.MODE:AddOption(SLIPPI_OFF, "Off: Other games", true)
+	-- off:SetTooltipParent(self.SLIPPI.MODE)
+	-- off:SetTooltipTitle("OFF: OTHER GAMES")
+	-- off:SetTooltipBody([[Use normal game detection. Supported game list can be found on the github README.]])
+	-- local netplay = self.SLIPPI.MODE:AddOption(SLIPPI_NETPLAY, "Melee: Rollback")
+	-- netplay:SetTooltipParent(self.SLIPPI.MODE)
+	-- netplay:SetTooltipTitle("ROLLBACK")
+	-- netplay:SetTooltipBody([[Allows the overlay to work properly when playing Slippi online. Will also actively change the overylay to display your current port.
+	-- 
+	-- WARNING: This tricks K'Overlay into thinking Melee is being played when an invalid game is detected. When playing other games, it is recommended to set this to OFF.]])
+	-- local mirror = self.SLIPPI.MODE:AddOption(SLIPPI_REPLAY, "Melee: Replay/Mirror")
+	-- mirror:SetTooltipParent(self.SLIPPI.MODE)
+	-- mirror:SetTooltipTitle("REPLAY/MIRROR")
+	-- mirror:SetTooltipBody([[Allows the overlay to work when viewing replays or mirroring gameplay from a console.]])
+	-- self.SLIPPI.MODE.OnSelectOption = function(this, num)
+	-- 	self.SLIPPI.ICON:SetImage(num == SLIPPI_OFF and "textures/slippi.png" or "textures/slippi_filled.png")
+	-- end
 
-	self.MELEE.RIGHT = self.MELEE:Add("Panel")
-	self.MELEE.RIGHT:SetWidth(160)
-	self.MELEE.RIGHT:Dock(DOCK_RIGHT)
-	self.MELEE.RIGHT:SetDrawPanel(false)
+	-- Disable Melee UI elements
+	-- self.MELEE.MUSIC = self.MELEE.LEFT:Add("CheckBox")
+	-- self.MELEE.MUSIC:SetText("Enable music")
+	-- self.MELEE.MUSIC:Dock(DOCK_TOP)
+	-- self.MELEE.MUSIC:SetTooltipTitle("MELEE MUSIC")
+	-- self.MELEE.MUSIC:SetTooltipBody([[Enable/Disable custom music for Melee.]])
 
-	self.SLIPPI = self.MAIN:AddTab("Slippi", "textures/gui/slippi.png")
+	-- function self.MELEE.MUSIC:OnToggle(on)
+	-- 	if on then
+	-- 		music.onStateChange()
+	-- 	else
+	-- 		music.kill()
+	-- 	end
+	-- end
 
-	self.SLIPPI.LEFT = self.SLIPPI:Add("Panel")
-	self.SLIPPI.LEFT:SetWidth(160)
-	self.SLIPPI.LEFT:Dock(DOCK_LEFT)
-	self.SLIPPI.LEFT:SetDrawPanel(false)
+	-- self.MELEE.MUSICLOOP = self.MELEE.RIGHT:Add("CheckPanel")
+	-- self.MELEE.MUSICLOOP:SetText("Loop on..")
+	-- self.MELEE.MUSICLOOP:DockMargin(0,0,0,0)
+	-- self.MELEE.MUSICLOOP:Dock(DOCK_TOP)
+	-- self.MELEE.MUSICLOOP:SetWidth(100)
 
-	self.SLIPPI.ICON = self.SLIPPI.LEFT:Add("Image")
-	self.SLIPPI.ICON:SetImage("textures/slippi.png")
-	self.SLIPPI.ICON:SetPos(2, 0)
-	self.SLIPPI.ICON:SetSize(155, 112)
-	self.SLIPPI.ICON:CenterVertical()
+	-- local menu = self.MELEE.MUSICLOOP:AddOption(LOOPING_MENU, "Menu")
+	-- menu:SetTooltipParent(self.MELEE.MUSICLOOP)
+	-- menu:SetTooltipTitle("LOOP MENU")
+	-- menu:SetTooltipBody([[When entering the menus, it will select and play one song at random.
 
-	self.SLIPPI.RIGHT = self.SLIPPI:Add("Panel")
-	self.SLIPPI.RIGHT:SetWidth(160)
-	self.SLIPPI.RIGHT:Dock(DOCK_RIGHT)
-	self.SLIPPI.RIGHT:SetDrawPanel(false)
+	-- When the song ends or reaches a loop point, it will play again.]])
+	-- local stage_timed = self.MELEE.MUSICLOOP:AddOption(LOOPING_STAGE_TIMED, "Stage (timed)")
+	-- stage_timed:SetTooltipParent(self.MELEE.MUSICLOOP)
+	-- stage_timed:SetTooltipTitle("LOOP STAGE (TIMED)")
+	-- stage_timed:SetTooltipBody([[When entering a stage that has a timer, it will select and play one song at random.
 
-	self.SLIPPI.MODE = self.SLIPPI.RIGHT:Add("RadioPanel")
-	self.SLIPPI.MODE:SetText("Slippi mode")
-	self.SLIPPI.MODE:DockMargin(0,0,0,0)
-	self.SLIPPI.MODE:Dock(DOCK_FILL)
-	self.SLIPPI.MODE:SetWidth(100)
+	-- When the song ends or reaches a loop point, it will play again.]])
+	-- local stage_endless = self.MELEE.MUSICLOOP:AddOption(LOOPING_STAGE_ENDLESS, "Stage (endless)")
+	-- stage_endless:SetTooltipParent(self.MELEE.MUSICLOOP)
+	-- stage_endless:SetTooltipTitle("LOOP STAGE (ENDLESS)")
+	-- stage_endless:SetTooltipBody([[When entering a stage that is endless, such as training mode or endless melee, it will select and play one song at random.
 
-	local off = self.SLIPPI.MODE:AddOption(SLIPPI_OFF, "Off: Other games", true)
-	off:SetTooltipParent(self.SLIPPI.MODE)
-	off:SetTooltipTitle("OFF: OTHER GAMES")
-	off:SetTooltipBody([[Use normal game detection. Supported game list can be found on the github README.]])
-	local netplay = self.SLIPPI.MODE:AddOption(SLIPPI_NETPLAY, "Melee: Rollback")
-	netplay:SetTooltipParent(self.SLIPPI.MODE)
-	netplay:SetTooltipTitle("ROLLBACK")
-	netplay:SetTooltipBody([[Allows the overlay to work properly when playing Slippi online. Will also actively change the overylay to display your current port.
-
-WARNING: This tricks K'Overlay into thinking Melee is being played when an invalid game is detected. When playing other games, it is recommended to set this to OFF.]])
-	local mirror = self.SLIPPI.MODE:AddOption(SLIPPI_REPLAY, "Melee: Replay/Mirror")
-	mirror:SetTooltipParent(self.SLIPPI.MODE)
-	mirror:SetTooltipTitle("REPLAY/MIRROR")
-	mirror:SetTooltipBody([[Allows the overlay to work when viewing replays or mirroring gameplay from a console.]])
-
-	self.SLIPPI.MODE.OnSelectOption = function(this, num)
-		self.SLIPPI.ICON:SetImage(num == SLIPPI_OFF and "textures/slippi.png" or "textures/slippi_filled.png")
-	end
-
-	self.MELEE.MUSIC = self.MELEE.LEFT:Add("CheckBox")
-	self.MELEE.MUSIC:SetText("Enable music")
-	self.MELEE.MUSIC:Dock(DOCK_TOP)
-	self.MELEE.MUSIC:SetTooltipTitle("MELEE MUSIC")
-	self.MELEE.MUSIC:SetTooltipBody([[Enable/Disable custom music for Melee.]])
-
-	function self.MELEE.MUSIC:OnToggle(on)
-		if on then
-			music.onStateChange()
-		else
-			music.kill()
-		end
-	end
-
-	self.MELEE.MUSICLOOP = self.MELEE.RIGHT:Add("CheckPanel")
-	self.MELEE.MUSICLOOP:SetText("Loop on..")
-	self.MELEE.MUSICLOOP:DockMargin(0,0,0,0)
-	self.MELEE.MUSICLOOP:Dock(DOCK_TOP)
-	self.MELEE.MUSICLOOP:SetWidth(100)
-
-	local menu = self.MELEE.MUSICLOOP:AddOption(LOOPING_MENU, "Menu")
-	menu:SetTooltipParent(self.MELEE.MUSICLOOP)
-	menu:SetTooltipTitle("LOOP MENU")
-	menu:SetTooltipBody([[When entering the menus, it will select and play one song at random.
-
-When the song ends or reaches a loop point, it will play again.]])
-	local stage_timed = self.MELEE.MUSICLOOP:AddOption(LOOPING_STAGE_TIMED, "Stage (timed)")
-	stage_timed:SetTooltipParent(self.MELEE.MUSICLOOP)
-	stage_timed:SetTooltipTitle("LOOP STAGE (TIMED)")
-	stage_timed:SetTooltipBody([[When entering a stage that has a timer, it will select and play one song at random.
-
-When the song ends or reaches a loop point, it will play again.]])
-	local stage_endless = self.MELEE.MUSICLOOP:AddOption(LOOPING_STAGE_ENDLESS, "Stage (endless)")
-	stage_endless:SetTooltipParent(self.MELEE.MUSICLOOP)
-	stage_endless:SetTooltipTitle("LOOP STAGE (ENDLESS)")
-	stage_endless:SetTooltipBody([[When entering a stage that is endless, such as training mode or endless melee, it will select and play one song at random.
-
-When the song ends or reaches a loop point, it will play again.]])
+	-- When the song ends or reaches a loop point, it will play again.]])
 	
-	function self.MELEE.MUSICLOOP:OnValueChanged(flags)
-		music.onLoopChange(flags)
-	end
+	-- function self.MELEE.MUSICLOOP:OnValueChanged(flags)
+	-- 	music.onLoopChange(flags)
+	-- end
 
-	self.MELEE.MUSICPROB = self.MELEE.LEFT:Add("ButtonIcon")
-	self.MELEE.MUSICPROB:SetText("Music probability")
-	self.MELEE.MUSICPROB:Dock(DOCK_BOTTOM)
-	self.MELEE.MUSICPROB:SetImage("textures/gui/chart_bar_edit.png")
+	-- self.MELEE.MUSICPROB = self.MELEE.LEFT:Add("ButtonIcon")
+	-- self.MELEE.MUSICPROB:SetText("Music probability")
+	-- self.MELEE.MUSICPROB:Dock(DOCK_BOTTOM)
+	-- self.MELEE.MUSICPROB:SetImage("textures/gui/chart_bar_edit.png")
 
-	self.MELEE.MUSICPROB.OnClick = function(this)
-		self.MUSICPROBABILITY:SetVisible(true)
-		self.MUSICPROBABILITY:BringToFront()
-		self.MUSICPROBABILITY:UpdatePlaylist()
-	end
+	-- self.MELEE.MUSICPROB.OnClick = function(this)
+	-- 	self.MUSICPROBABILITY:SetVisible(true)
+	-- 	self.MUSICPROBABILITY:BringToFront()
+	-- 	self.MUSICPROBABILITY:UpdatePlaylist()
+	-- end
 	
-	self.MELEE.MUSICSKIP = self.MELEE.LEFT:Add("GCBinderPanel")
-	self.MELEE.MUSICSKIP:SetButtonCombo(0x0042)
-	self.MELEE.MUSICSKIP:SetText("Skip track combo")
-	self.MELEE.MUSICSKIP:Dock(DOCK_TOP)
-	self.MELEE.MUSICSKIP:SetTooltipTitle("SKIP TRACK COMBO")
-	self.MELEE.MUSICSKIP:SetTooltipBody([[This button will allow you to a set a button combination on your controller to skip the currently playing music track.
+	-- self.MELEE.MUSICSKIP = self.MELEE.LEFT:Add("GCBinderPanel")
+	-- self.MELEE.MUSICSKIP:SetButtonCombo(0x0042)
+	-- self.MELEE.MUSICSKIP:SetText("Skip track combo")
+	-- self.MELEE.MUSICSKIP:Dock(DOCK_TOP)
+	-- self.MELEE.MUSICSKIP:SetTooltipTitle("SKIP TRACK COMBO")
+	-- self.MELEE.MUSICSKIP:SetTooltipBody([[This button will allow you to a set a button combination on your controller to skip the currently playing music track.
 
-NOTE: This button is only usable when in a supported game.]])
+	-- NOTE: This button is only usable when in a supported game.]])
 	
-	self.MELEE.MUSICMUTE = self.MELEE.LEFT:Add("GCBinderPanel")
-	self.MELEE.MUSICMUTE:SetButtonCombo(0x0041)
-	self.MELEE.MUSICMUTE:SetText("Mute track combo")
-	self.MELEE.MUSICMUTE:Dock(DOCK_TOP)
-	self.MELEE.MUSICMUTE:SetTooltipTitle("MUTE TRACK COMBO")
-	self.MELEE.MUSICMUTE:SetTooltipBody([[This button will allow you to a set a button combination on your controller to mute/unmute the music.
+	-- self.MELEE.MUSICMUTE = self.MELEE.LEFT:Add("GCBinderPanel")
+	-- self.MELEE.MUSICMUTE:SetButtonCombo(0x0041)
+	-- self.MELEE.MUSICMUTE:SetText("Mute track combo")
+	-- self.MELEE.MUSICMUTE:Dock(DOCK_TOP)
+	-- self.MELEE.MUSICMUTE:SetTooltipTitle("MUTE TRACK COMBO")
+	-- self.MELEE.MUSICMUTE:SetTooltipBody([[This button will allow you to a set a button combination on your controller to mute/unmute the music.
 
-NOTE: This button is only usable when in a supported game.]])
+	-- NOTE: This button is only usable when in a supported game.]])
 
-	self.MELEE.VOLUME = self.MELEE.RIGHT:Add("SliderPanel")
-	self.MELEE.VOLUME:DockMargin(0,0,0,0)
-	self.MELEE.VOLUME:SetValue(50)
-	self.MELEE.VOLUME:Dock(DOCK_BOTTOM)
-	self.MELEE.VOLUME:SetTooltipTitle("VOLUME")
-	self.MELEE.VOLUME:SetTooltipBody([[Adjust the volume of the music.]])
-	self.MELEE.VOLUME:SetTextFormat("Volume: %d%%")
+	-- self.MELEE.VOLUME = self.MELEE.RIGHT:Add("SliderPanel")
+	-- self.MELEE.VOLUME:DockMargin(0,0,0,0)
+	-- self.MELEE.VOLUME:SetValue(50)
+	-- self.MELEE.VOLUME:Dock(DOCK_BOTTOM)
+	-- self.MELEE.VOLUME:SetTooltipTitle("VOLUME")
+	-- self.MELEE.VOLUME:SetTooltipBody([[Adjust the volume of the music.]])
+	-- self.MELEE.VOLUME:SetTextFormat("Volume: %d%%")
 
-	function self.MELEE.VOLUME:OnValueChanged(i)
-		music.setVolume(i)
-	end
+	-- function self.MELEE.VOLUME:OnValueChanged(i)
+	-- 	music.setVolume(i)
+	-- end
 
 	self.PORTTITLE = self.GENERAL.LEFT:Add("CheckBox")
 	self.PORTTITLE:SetText("Port in title")
@@ -254,6 +247,23 @@ NOTE: This button is only usable when in a supported game.]])
 	self.HIGH_CONTRAST:SetTooltipBody([[All buttons and joystick-gates with be filled with black for better viewing visibility.
 
 20XX theme is unsupported]])
+
+	self.DARK_MODE = self.GENERAL.RIGHT:Add("CheckBox")
+	self.DARK_MODE:SetText("Dark mode")
+	self.DARK_MODE:Dock(DOCK_TOP)
+	self.DARK_MODE:SetTooltipTitle("DARK MODE")
+	self.DARK_MODE:SetTooltipBody([[Enable dark mode theme for the settings interface.
+
+This will change the background and text colors to provide a darker appearance.]])
+	
+	function self.DARK_MODE:OnToggle(on)
+		-- Switch between default and dark GUI skins
+		if on then
+			gui.setSkin("dark")
+		else
+			gui.setSkin("default")
+		end
+	end
 
 	self.USE_TRANASPARENCY = self.GENERAL.RIGHT:Add("CheckBox")
 	self.USE_TRANASPARENCY:SetVisible(love.supportsGameCapture())
@@ -304,7 +314,7 @@ This will only function correctly if you are capturing this window in OBS with a
 	self.CONFIGDIR:SetTooltipTitle("CONFIGURATION DIRECTORY")
 	self.CONFIGDIR:SetTooltipBody([[This button will open the file explorer to K'Overlay's config directory.
 
-This is also the same directory you use to place all your music for Melee.]])
+This is where K'Overlay stores its configuration files.]])
 
 	function self.CONFIGDIR:OnClick()
 		love.system.openURL(("file://%s"):format(love.filesystem.getSaveDirectory()))
@@ -335,113 +345,7 @@ This is also the same directory you use to place all your music for Melee.]])
 		self.DEBUG_INPUTS_CONFIG:BringToFront()
 	end
 
-	self.ABOUT = self.MAIN:AddTab("About", "textures/icon.png")
-
-	self.ABOUT.Skin = function(this)
-		this:super("Skin")
-		this:SetBGColor(color_purple)
-	end
-
-	self.ABOUT.LEFT = self.ABOUT:Add("Panel")
-	self.ABOUT.LEFT:SetDrawPanel(false)
-	self.ABOUT.LEFT:Dock(DOCK_LEFT)
-	self.ABOUT.LEFT:SetWidth(160)
-
-	if _LAUNCHER then
-		self.ABOUT.LEFT.Paint = function(this, w, h)
-			updater.draw(w,h)
-		end
-	else
-		local ICON = self.ABOUT.LEFT:Add("Image")
-		ICON:Dock(DOCK_FILL)
-		ICON:DockMargin(32, 32, 32, 32)
-		ICON:SetImage("textures/icon.png")
-	end
-
-	self.ABOUT.RIGHT = self.ABOUT:Add("Panel")
-	self.ABOUT.RIGHT:SetDrawPanel(false)
-	self.ABOUT.RIGHT:Dock(DOCK_RIGHT)
-	self.ABOUT.RIGHT:SetWidth(160)
-
-	local VERSION = self.ABOUT.RIGHT:Add("ButtonIcon")
-	VERSION:SetImage("textures/gui/link.png")
-	VERSION:SetText(love.getMOverlayVersion() .. " changelog")
-	VERSION:Dock(DOCK_TOP)
-
-	function VERSION:OnClick()
-		love.system.openURL(("https://github.com/bkacjios/m-overlay/releases/tag/v%s"):format(love.getMOverlayVersion()))
-	end
-
-	self.ABOUT.SOCIALS = self.ABOUT.RIGHT:Add("Panel")
-	--self.ABOUT.SOCIALS:SetBGColor(color(215, 215, 215))
-	self.ABOUT.SOCIALS:Dock(DOCK_BOTTOM)
-
-	self.ABOUT.DARK = self.ABOUT.RIGHT:Add("CheckBox")
-	self.ABOUT.DARK:SetToggled(true)
-	self.ABOUT.DARK:SetText("Dark mode")
-	self.ABOUT.DARK:Dock(DOCK_BOTTOM)
-	self.ABOUT.DARK:SetTooltipTitle("DARK MODE")
-	self.ABOUT.DARK:SetTooltipBody([[Enables a dark mode on the settings UI.]])
-
-	function self.ABOUT.DARK:OnToggle(on)
-		gui.setSkin(on and "dark" or "default")
-	end
-
-	self.ABOUT.AUTHOR = self.ABOUT.SOCIALS:Add("Label")
-	self.ABOUT.AUTHOR:SetText("Made by /bkacjios")
-	self.ABOUT.AUTHOR:SetTextAlignmentX("center")
-	self.ABOUT.AUTHOR:SizeToText()
-	self.ABOUT.AUTHOR:Dock(DOCK_TOP)
-
-	self.ABOUT.SOCIALS:SetHeight(self.ABOUT.AUTHOR:GetHeight() + 44)
-
-	local GITHUB = self.ABOUT.SOCIALS:Add("Image")
-	GITHUB:SetFocusable(true)
-	GITHUB:SetSize(32, 32)
-	GITHUB:Dock(DOCK_LEFT)
-	GITHUB:SetImage("textures/social/github.png")
-	GITHUB:SetTooltipTitle("GITHUB")
-	GITHUB:SetTooltipBody([[https://github.com/bkacjios]])
-
-	function GITHUB:OnClick()
-		love.system.openURL("https://github.com/bkacjios")
-	end
-
-	local TWITTER = self.ABOUT.SOCIALS:Add("Image")
-	TWITTER:SetFocusable(true)
-	TWITTER:SetSize(32, 32)
-	TWITTER:Dock(DOCK_LEFT)
-	TWITTER:SetImage("textures/social/twitter.png")
-	TWITTER:SetTooltipTitle("TWITTER")
-	TWITTER:SetTooltipBody([[https://twitter.com/bkacjios]])
-
-	function TWITTER:OnClick()
-		love.system.openURL("https://twitter.com/bkacjios")
-	end
-
-	local TWITCH = self.ABOUT.SOCIALS:Add("Image")
-	TWITCH:SetFocusable(true)
-	TWITCH:SetSize(32, 32)
-	TWITCH:Dock(DOCK_LEFT)
-	TWITCH:SetImage("textures/social/twitch.png")
-	TWITCH:SetTooltipTitle("TWITCH")
-	TWITCH:SetTooltipBody([[https://twitch.tv/bkacjios]])
-
-	function TWITCH:OnClick()
-		love.system.openURL("https://twitch.tv/bkacjios")
-	end
-
-	local PAYPAL = self.ABOUT.SOCIALS:Add("Image")
-	PAYPAL:SetFocusable(true)
-	PAYPAL:SetSize(32, 32)
-	PAYPAL:Dock(DOCK_LEFT)
-	PAYPAL:SetImage("textures/social/paypal.png")
-	PAYPAL:SetTooltipTitle("PAYPAL")
-	PAYPAL:SetTooltipBody([[https://www.paypal.com/paypalme/bkacjios]])
-
-	function PAYPAL:OnClick()
-		love.system.openURL("https://www.paypal.com/paypalme/bkacjios")
-	end
+	-- About tab removed entirely
 
 	self.m_sFileName = "config.json"
 
@@ -484,7 +388,6 @@ function PANEL:GetSaveTable()
 		["config-version"] = self:GetConfigVersion(),
 		["port"] = overlay.getPort(),
 		["skin"] = overlay.getSkin(),
-		["slippi-mode"] = self:GetSlippiMode(),
 		["port-in-title"] = self:IsPortTitleEnabled(),
 		["always-show-port"] = self:AlwaysShowPort(),
 		["high-contrast"] = self:IsHighContrast(),
@@ -494,11 +397,7 @@ function PANEL:GetSaveTable()
 		["debugging-input-flags"] = self:GetDebuggingInputFlags(),
 		["use-transparency"] = self:UseTransparency(),
 		["transparency"] = self:GetTransparency(),
-		["melee-music"] = self:PlayStageMusic(),
-		["melee-music-loop-flags"] = self:GetMusicLoopMode(),
-		["melee-music-skip-buttons"] = self:GetMusicSkipMask(),
-		["melee-music-mute-buttons"] = self:GetMusicMuteMask(),
-		["melee-music-volume"] = self:GetVolume(),
+		-- Music feature removed
 		["background-color"] = self:GetBackgroundColor():hexString(),
 		["dark-mode"] = self:IsDarkMode(),
 	}
@@ -521,44 +420,18 @@ function PANEL:GetBackgroundColor()
 	return self.BACKGROUNDCOLOR:GetColor()
 end
 
-function PANEL:IsBinding()
-	return self.MELEE.MUSICSKIP:IsBinding() or self.MELEE.MUSICMUTE:IsBinding()
-end
-
-function PANEL:GetMusicSkipMask()
-	return self.MELEE.MUSICSKIP:GetButtonCombo()
-end
-
-function PANEL:GetMusicMuteMask()
-	return self.MELEE.MUSICMUTE:GetButtonCombo()
-end
-
-function PANEL:PlayStageMusic()
-	return self.MELEE.MUSIC:IsToggled()
-end
-
-function PANEL:GetMusicLoopMode()
-	return self.MELEE.MUSICLOOP:GetValue()
-end
-
-function PANEL:SetVolume(volume)
-	return self.MELEE.VOLUME:SetValue(math.clamp(volume, 0, 100))
-end
-
-function PANEL:GetVolume()
-	return self.MELEE.VOLUME:GetValue()
-end
+-- Music feature removed
 
 function PANEL:GetSlippiMode()
-	return self.SLIPPI.MODE:GetOption()
+	return SLIPPI_OFF
 end
 
 function PANEL:IsSlippiNetplay()
-	return self.SLIPPI.MODE:GetOption() == SLIPPI_NETPLAY
+	return false
 end
 
 function PANEL:IsSlippiReplay()
-	return self.SLIPPI.MODE:GetOption() == SLIPPI_REPLAY
+	return false
 end
 
 function PANEL:IsPortTitleEnabled()
@@ -614,7 +487,7 @@ function PANEL:GetTransparency()
 end
 
 function PANEL:IsDarkMode()
-	return self.ABOUT.DARK:IsToggled()
+	return self.DARK_MODE:IsToggled()
 end
 
 function PANEL:OnClosed()
@@ -724,15 +597,23 @@ function PANEL:LoadSettings()
 	end
 	self.DEBUG_INPUTS_CONFIG:SetValue(settings["debugging-input-flags"])
 	self.TRANSPARENCY:SetValue(settings["transparency"])
-	self.SLIPPI.MODE:SetValue(settings["slippi-mode"])
-	self.MELEE.MUSIC:SetToggled(settings["melee-music"], true)
-	self.MELEE.MUSICLOOP:SetValue(settings["melee-music-loop-flags"] or LOOPING_NONE)
-	self.MELEE.MUSICSKIP:SetButtonCombo(settings["melee-music-skip-buttons"])
-	self.MELEE.MUSICMUTE:SetButtonCombo(settings["melee-music-mute-buttons"])
-	self.MELEE.VOLUME:SetValue(settings["melee-music-volume"])
+	-- self.SLIPPI.MODE:SetValue(settings["slippi-mode"]) -- Slippi tab removed; ignore setting
+	-- Melee tab removed; ignore settings
+	-- self.MELEE.MUSIC:SetToggled(settings["melee-music"], true)
+	-- self.MELEE.MUSICLOOP:SetValue(settings["melee-music-loop-flags"] or LOOPING_NONE)
+	-- self.MELEE.MUSICSKIP:SetButtonCombo(settings["melee-music-skip-buttons"])
+	-- self.MELEE.MUSICMUTE:SetButtonCombo(settings["melee-music-mute-buttons"])
+	-- self.MELEE.VOLUME:SetValue(settings["melee-music-volume"])
 	if love.supportsGameCapture() then
 		self.USE_TRANASPARENCY:SetToggled(settings["use-transparency"], true)
 	end
 	self.BACKGROUNDCOLOR:SetColor(color(settings["background-color"]))
-	self.ABOUT.DARK:SetToggled(settings["dark-mode"], true)
+	self.DARK_MODE:SetToggled(settings["dark-mode"], true)
+	
+	-- Apply the dark mode setting immediately (default to light mode if not set)
+	if settings["dark-mode"] then
+		gui.setSkin("dark")
+	else
+		gui.setSkin("default")
+	end
 end

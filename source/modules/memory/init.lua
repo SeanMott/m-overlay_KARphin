@@ -50,12 +50,31 @@ local function bswap16(n)
 	return bit.bor(bit.rshift(n, 8), bit.lshift(bit.band(n, 0xFF), 8))
 end
 
+local function sanitizeId(id, expectedLen, noneValue)
+	if not id or #id ~= expectedLen then
+		return noneValue
+	end
+	-- Normalize to ASCII uppercase without touching non-ASCII bytes
+	local upper = id:upper()
+	-- Validate: only A-Z and 0-9 are allowed in IDs
+	if not upper:match("^[A-Z0-9]+$") then
+		return noneValue
+	end
+	return upper
+end
+
 function memory.readGameID()
-	return memory.read(GAME_ID_ADDR, GAME_ID_LEN)
+	local gid = memory.read(GAME_ID_ADDR, GAME_ID_LEN)
+	-- Filter known false-positives first
+	if gid and #gid >= 4 and gid:sub(1, 4) == "nvph" then
+		return GAME_NONE
+	end
+	return sanitizeId(gid, GAME_ID_LEN, GAME_NONE)
 end
 
 function memory.readVirtualConsoleID()
-	return memory.read(VC_ID_ADDR, VC_ID_LEN)
+	local vcid = memory.read(VC_ID_ADDR, VC_ID_LEN)
+	return sanitizeId(vcid, VC_ID_LEN, VC_NONE)
 end
 
 function memory.readGameVersion()
@@ -84,6 +103,9 @@ local function cache(typ, len)
 end
 
 function memory.read(addr, len)
+	if not process:hasProcess() then
+		return string.rep("\0", len)
+	end
 	local output = cache("uint8_t", len)
 	local size = ffi.sizeof(output)
 	process:read(addr, output, size)
@@ -474,10 +496,11 @@ function memory.isMelee()
 	if not gid or not version then return false end
 
 	-- Force the GAMEID and VERSION to be Melee 1.02, since Fizzi seems to be using the gameid address space for something..
-	if not memory.isSupportedGame(gid, version) and gid ~= GAME_NONE and PANEL_SETTINGS:IsSlippiNetplay() then
-		gid = "GALE01"
-		version = 0x02
-	end
+	-- (Slippi override removed)
+	-- if not memory.isSupportedGame(gid, version) and gid ~= GAME_NONE and PANEL_SETTINGS:IsSlippiNetplay() then
+	-- 	gid = "GALE01"
+	-- 	version = 0x02
+	-- end
 
 	-- See if this GameID is a clone of another
 	local clone = memory.clones[gid] and memory.clones[gid][version] or nil
@@ -493,42 +516,231 @@ end
 local timer = love.timer.getTime()
 
 function memory.isSupportedGame(gid, version)
+	-- Skip NVIDIA shader entirely
+	if gid == "nvph" then
+		return false
+	end
 	return love.filesystem.getInfo(string.format("modules/games/%s-%d.lua", gid, version)) ~= nil
 end
 
 function memory.loadGameScript(path)
+	-- Skip NVIDIA shader detection entirely
+	if path == "nvph" then
+		log.info("[KARPHIN] Skipping NVIDIA shader detection: %s", path)
+		return false
+	end
+	
 	-- Try to load the game table
-	local status, game = xpcall(require, debug.traceback, ("games.%s"):format(path))
+	local status, result = xpcall(require, debug.traceback, ("games.%s"):format(path))
 
-	if status then
-		memory.game = game
+	if status and type(result) == "table" then
+		memory.game = result
 		log.info("[KARPHIN] Loaded game config: %s", path)
 		notification.info(("Game %q detected"):format(path))
-		if not game.translateCStick then
-			game.translateCStick = game.translateJoyStick
+		if not result.translateCStick then
+			result.translateCStick = result.translateJoyStick
 		end
-		memory.init(game.memorymap)
+		memory.init(result.memorymap)
+		return true
 	else
-		notification.error(("Unsupported game %s"):format(path))
-		notification.error("Playing slippi netplay? Press 'escape' and enable Rollback/Netplay mode")
-		log.error("[KARPHIN] %s", game) -- game variable is an error string
+		-- Don't show error for NVIDIA shader
+		if path ~= "nvph" then
+			notification.error(("Unsupported game %s"):format(path))
+			notification.error("Playing slippi netplay? Press 'escape' and enable Rollback/Netplay mode")
+		end
+		log.error("[KARPHIN] %s", result) -- result variable is an error string
+		return false
 	end
 end
+
+-- Track last seen game ID/version for debug logging
+local lastLoggedGid = nil
+local lastLoggedVersion = nil
+
+-- Debounce state for game detection
+local lastDetectGid = GAME_NONE
+local lastDetectVersion = 0
+local lastDetectVcid = VC_NONE
+local stableDetectCount = 0
+local noneDetectCount = 0
+local STABLE_THRESHOLD = 2
+local NONE_THRESHOLD = 2
+
+-- Cooldown after RAM offset changes to ignore transient reads
+local detectCooldownUntil = 0
+
+-- Watchdog for stale RAM offset when process isn't hooked
+local offsetStuckSince = 0
+local OFFSET_STALE_SECS = 0.6
+
+-- Watchdog for bad handles when reads return NONE continuously
+local noneWhileHookedCount = 0
+local NONE_HANDLE_STALE_FRAMES = 120 -- Increased from 60 to be much less aggressive
+
+-- Track when process was last seen to avoid flashing during rehooking
+local lastProcessSeenTime = love.timer.getTime()
+local PROCESS_GONE_THRESHOLD = 2.0 -- Show "Waiting" only after 2 seconds of no process
+
+-- Cooldown after forced rehook to prevent immediate re-triggering
+local lastForcedRehookTime = 0
+local FORCED_REHOOK_COOLDOWN = 8.0 -- Increased from 3.0 to prevent rehooking loops
+
+-- Suppress "Waiting for KARphin" during forced rehook phases
+local suppressWaitingTitleUntil = 0
+local REHOOK_SUPPRESSION_TIME = 2.0 -- Suppress waiting title for 2 seconds after forced rehook
 
 function memory.findGame()
 	local gid = memory.readGameID()
 	local version = memory.readGameVersion()
 	local vcid = memory.readVirtualConsoleID()
 
-	-- Force the GAMEID and VERSION to be Melee 1.02, since Fizzi seems to be using the gameid address space for something..
-	if not memory.isSupportedGame(gid, version) and gid ~= GAME_NONE and PANEL_SETTINGS:IsSlippiNetplay() then
-		gid = "GKYE01"
-		version = "0"
+	-- If gid is NONE, ignore transient version reads
+	if gid == GAME_NONE then
+		version = 0
 	end
+
+	-- Debounce current detection tuple (run BEFORE any early returns)
+	local isNone = (gid == GAME_NONE and vcid == VC_NONE)
+	local sameAsLast = (gid == lastDetectGid and version == lastDetectVersion and vcid == lastDetectVcid)
+	if isNone then
+		noneDetectCount = noneDetectCount + 1
+		stableDetectCount = 0
+	else
+		if sameAsLast then
+			stableDetectCount = stableDetectCount + 1
+		else
+			stableDetectCount = 1
+		end
+	end
+	lastDetectGid = gid
+	lastDetectVersion = version
+	lastDetectVcid = vcid
+
+	-- 🔒 FIX: Skip "nvph" game ID entirely (NVIDIA shader, not a game)
+	if gid == "nvph" then
+		log.info("[KARPHIN] Skipping NVIDIA shader detection: %s", gid)
+		return  -- Exit early, do not process "nvph" as a game
+	end
+
+	-- Debug: Log what we're reading when stuck (much less frequent to reduce spam)
+	if noneWhileHookedCount > 60 and noneWhileHookedCount % 60 == 0 then
+		log.debug("[KARPHIN] Stuck reading NONE - gid: %s, vcid: %s, count: %d", 
+			gid == GAME_NONE and "NONE" or gid, 
+			vcid == VC_NONE and "NONE" or vcid, 
+			noneWhileHookedCount)
+	end
+
+	-- NONE-while-hooked watchdog: if we’re hooked + have offset but keep seeing NONE, force rehook
+	if process:hasProcess() and process:hasGamecubeRAMOffset() then
+		local now = love.timer.getTime()
+		-- Only allow forced rehook if we're not in cooldown period
+		if (now - lastForcedRehookTime) > FORCED_REHOOK_COOLDOWN then
+			if gid == GAME_NONE and vcid == VC_NONE then
+				noneWhileHookedCount = noneWhileHookedCount + 1
+				if noneWhileHookedCount > NONE_HANDLE_STALE_FRAMES then
+					-- Additional check: verify process is actually still running before forcing rehook
+					if process:isProcessActive() then
+						-- Process is still active, but we've been reading NONE for a very long time
+						-- Check if we have a clearly wrong RAM offset (256MB when no game is loaded)
+						local currentSize = process:getGamecubeRAMSize()
+						if currentSize > 64 * 1024 * 1024 then -- 64MB threshold
+							log.debug("[KARPHIN] Process active but stuck reading NONE with large RAM offset (%s); clearing offset", string.toSize(currentSize))
+							process:clearGamecubeRAMOffset()
+							noneWhileHookedCount = 0
+							lastForcedRehookTime = now
+							suppressWaitingTitleUntil = now + REHOOK_SUPPRESSION_TIME
+							log.debug("[KARPHIN] Set suppression until %.1fs from now", REHOOK_SUPPRESSION_TIME)
+							return
+						else
+							-- RAM offset seems reasonable, force full rehook
+							log.debug("[KARPHIN] Process active but stuck reading NONE; forcing rehook to refresh RAM offset")
+							process:close()
+							process:clearGamecubeRAMOffset()
+							memory.hooked = false
+							noneWhileHookedCount = 0
+							lastForcedRehookTime = now
+							suppressWaitingTitleUntil = now + REHOOK_SUPPRESSION_TIME
+							log.debug("[KARPHIN] Set suppression until %.1fs from now", REHOOK_SUPPRESSION_TIME)
+							return
+						end
+					else
+						-- Process is truly stale, force rehook
+						log.debug("[KARPHIN] Process handle stale; forcing rehook")
+						process:close()
+						process:clearGamecubeRAMOffset()
+						memory.hooked = false
+						noneWhileHookedCount = 0
+						lastForcedRehookTime = now
+						suppressWaitingTitleUntil = now + REHOOK_SUPPRESSION_TIME
+						log.debug("[KARPHIN] Set suppression until %.1fs from now", REHOOK_SUPPRESSION_TIME)
+						return
+					end
+				end
+			else
+				noneWhileHookedCount = 0
+			end
+		end
+	end
+
+	-- Only log if the game ID or version has changed and gid is not NONE
+	if gid ~= GAME_NONE and (lastLoggedGid ~= gid or lastLoggedVersion ~= version) then
+		log.debug("[KARPHIN] Processing game ID: %s, version: %d", gid, version)
+		lastLoggedGid = gid
+		lastLoggedVersion = version
+	end
+
+	-- Force the GAMEID and VERSION to be Melee 1.02, since Fizzi seems to be using the gameid address space for something..
+	-- (Slippi override removed)
+	-- if not memory.isSupportedGame(gid, version) and gid ~= GAME_NONE and PANEL_SETTINGS:IsSlippiNetplay() then
+	-- 	gid = "GKYE01"
+	-- 	version = 0
+	-- end
 
 	-- When playing Slippi netplay.. the game ID can and will change..
 	-- This would normally break things, but if you enable Rollback/Netplay mode it will force the gameid to always be GALE01 v1.02
 	local meleeMode = (memory.isMelee() and memory.gameid ~= gid)
+
+	-- Ignore detection during cooldown to avoid transient IDs
+	local now = love.timer.getTime()
+	if now < detectCooldownUntil then
+		return
+	end
+
+	-- Fast-path: if gid is a supported game ID, bypass debounce and open immediately
+	if gid ~= GAME_NONE and memory.isSupportedGame(gid, version) and not memory.ingame then
+		memory.reset()
+		memory.ingame = true
+		memory.gameid = gid
+		memory.version = version
+		log.info("[KARPHIN] Game: %s revision %i", gid, version)
+		love.updateTitle(("K'Overlay - KARphin hooked (%s-%i)"):format(gid, version))
+		local clone = memory.clones[gid] and memory.clones[gid][version] or nil
+		if clone then
+			version = clone.version
+			gid = clone.id
+		end
+		if memory.loadGameScript(("%s-%d"):format(gid, version)) then
+			memory.runhook("OnGameOpen", gid, version)
+		end
+		return
+	end
+
+	-- Enforce debounce: require stability before opening/closing
+	if not memory.ingame then
+		-- If we have a non-NONE gid but it's not stable yet, defer
+		if gid ~= GAME_NONE and stableDetectCount < STABLE_THRESHOLD then
+			return
+		end
+		-- If VC-only detection but not stable yet, defer
+		if gid == GAME_NONE and vcid ~= VC_NONE and stableDetectCount < STABLE_THRESHOLD then
+			return
+		end
+	else
+		-- Suppress close until we see consecutive NONE reads
+		if (gid == GAME_NONE and vcid == VC_NONE) and noneDetectCount < NONE_THRESHOLD then
+			return
+		end
+	end
 
 	if not memory.ingame and gid == GAME_NONE and vcid ~= VC_NONE then
 		memory.reset()
@@ -541,9 +753,16 @@ function memory.findGame()
 		-- Check for VC clones
 		vcid = memory.vcclones[vcid] or vcid
 
-		memory.loadGameScript(vcid)
-		memory.runhook("OnGameOpen", vcid)
+		if memory.loadGameScript(vcid) then
+			memory.runhook("OnGameOpen", vcid)
+		end
 	elseif (not memory.ingame or meleeMode) and gid ~= GAME_NONE then
+		-- Skip NVIDIA shader detection here as well
+		if gid == "nvph" then
+			log.info("[KARPHIN] Skipping NVIDIA shader in game detection: %s", gid)
+			return
+		end
+		
 		memory.reset()
 		memory.ingame = true
 		memory.gameid = gid
@@ -560,9 +779,11 @@ function memory.findGame()
 			gid = clone.id
 		end
 
-		memory.loadGameScript(("%s-%d"):format(gid, version))
-		memory.runhook("OnGameOpen", gid, version)
+		if memory.loadGameScript(("%s-%d"):format(gid, version)) then
+			memory.runhook("OnGameOpen", gid, version)
+		end
 	elseif (memory.ingame or meleeMode) and (gid == GAME_NONE and vcid == VC_NONE) then
+		if noneDetectCount < NONE_THRESHOLD then return end
 		memory.ingame = false
 		memory.gameid = gid
 		memory.vcid = vcid
@@ -573,14 +794,35 @@ function memory.findGame()
 		memory.process:clearGamecubeRAMOffset() -- Clear the memory address space location (When a new game is opened, we recheck this)
 		log.info("[KARPHIN] Game closed..")
 	end
+
+	-- Debounce current detection tuple
+	local isNone = (gid == GAME_NONE and vcid == VC_NONE)
+	local sameAsLast = (gid == lastDetectGid and version == lastDetectVersion and vcid == lastDetectVcid)
+	if isNone then
+		noneDetectCount = noneDetectCount + 1
+		stableDetectCount = 0
+		lastDetectGid = gid
+		lastDetectVersion = version
+		lastDetectVcid = vcid
+	else
+		if sameAsLast then
+			stableDetectCount = stableDetectCount + 1
+		else
+			stableDetectCount = 1
+			lastDetectGid = gid
+			lastDetectVersion = version
+			lastDetectVcid = vcid
+		end
+		noneDetectCount = 0
+	end
 end
 
 function memory.update()
 	if not memory.hasPermissions() then return end
 
 	if not process:isProcessActive() and process:hasProcess() then
+		-- Process handle is stale, close it but don't update title yet
 		process:close()
-		love.updateTitle("K'Overlay - Waiting for KARphin..")
 		log.info("[KARPHIN] Unhooked")
 		memory.hooked = false
 	end
@@ -589,17 +831,104 @@ function memory.update()
 
 	-- Only check for the dolphin process once per second to reduce CPU load
 	if not process:hasProcess() or not process:hasGamecubeRAMOffset() then
-		if timer <= t then
-			timer = t + 0.5
+		-- Check if we should show "Waiting for KARphin" after process has been gone for a while
+		-- But suppress during forced rehook phases to prevent flashing
+		if not process:hasProcess() and (t - lastProcessSeenTime) > PROCESS_GONE_THRESHOLD and t >= suppressWaitingTitleUntil then
+			-- Only set title once, not every frame
+			if not memory.waitingTitleSet then
+				log.debug("[KARPHIN] Setting title to 'Waiting for KARphin' - process gone for %.1fs", (t - lastProcessSeenTime))
+				love.updateTitle("K'Overlay - Waiting for KARphin..")
+				memory.waitingTitleSet = true
+			end
+		elseif not process:hasProcess() and (t - lastProcessSeenTime) > PROCESS_GONE_THRESHOLD and t < suppressWaitingTitleUntil then
+			-- Only log suppression once per second to reduce spam
+			if not memory.lastSuppressionLog or (t - memory.lastSuppressionLog) > 1.0 then
+				log.debug("[KARPHIN] Suppressed 'Waiting for KARphin' - suppression active for %.1fs", (suppressWaitingTitleUntil - t))
+				memory.lastSuppressionLog = t
+			end
+		elseif process:hasProcess() then
+			-- Reset flag when we have a process again
+			memory.waitingTitleSet = false
+		end
+		if not process:hasGamecubeRAMOffset() then
+			-- No offset yet: normal rate-limited discovery
+			offsetStuckSince = 0
+			if timer <= t then
+				timer = t + 0.5
+				if process:findprocess() then
+					log.info("[KARPHIN] Hooked")
+					love.updateTitle("K'Overlay - KARphin hooked")
+					memory.hooked = true
+					lastProcessSeenTime = t
+				elseif not process:hasGamecubeRAMOffset() and process:findGamecubeRAMOffset() then
+					local offset = process:getGamecubeRAMOffset()
+					local size = process:getGamecubeRAMSize()
+					log.debug("[KARPHIN] Watching ram address: 0x%X [%s]", offset, string.toSize(size))
+					
+					-- Validate the RAM offset - if it's 256MB, it's likely wrong when no game is loaded
+					if size > 64 * 1024 * 1024 then -- 64MB threshold
+						log.debug("[KARPHIN] Large RAM offset detected (%s) - likely wrong, clearing", string.toSize(size))
+						process:clearGamecubeRAMOffset()
+						-- Don't start detection cooldown since we cleared the offset
+						return
+					end
+					
+					-- Start cooldown to let memory settle
+					detectCooldownUntil = t + 0.75
+					stableDetectCount = 0
+					noneDetectCount = 0
+					lastDetectGid = GAME_NONE
+					lastDetectVersion = 0
+					lastDetectVcid = VC_NONE
+				end
+			end
+		else
+			-- We have an offset but no process handle: aggressively hook, and if stuck too long, reset offset
 			if process:findprocess() then
 				log.info("[KARPHIN] Hooked")
 				love.updateTitle("K'Overlay - KARphin hooked")
 				memory.hooked = true
-			elseif not process:hasGamecubeRAMOffset() and process:findGamecubeRAMOffset() then
-				log.debug("[KARPHIN] Watching ram address: 0x%X [%s]", process:getGamecubeRAMOffset(), string.toSize(process:getGamecubeRAMSize()))
+				lastProcessSeenTime = t
+				offsetStuckSince = 0
+			else
+				if offsetStuckSince == 0 then
+					offsetStuckSince = t
+				elseif (t - offsetStuckSince) > OFFSET_STALE_SECS then
+					-- Offset is stale; clear and rescan to avoid hanging at Watching ram address
+					process:clearGamecubeRAMOffset()
+					log.debug("[KARPHIN] RAM offset stale; clearing and rescanning")
+					offsetStuckSince = 0
+					-- Try immediately to find process and offset again
+					if process:findprocess() then
+						log.info("[KARPHIN] Hooked")
+						love.updateTitle("K'Overlay - KARphin hooked")
+						memory.hooked = true
+						lastProcessSeenTime = t
+					elseif process:findGamecubeRAMOffset() then
+						local offset = process:getGamecubeRAMOffset()
+						local size = process:getGamecubeRAMSize()
+						log.debug("[KARPHIN] Watching ram address: 0x%X [%s]", offset, string.toSize(size))
+						
+						-- Validate the RAM offset - if it's 256MB, it's likely wrong when no game is loaded
+						if size > 64 * 1024 * 1024 then -- 64MB threshold
+							log.debug("[KARPHIN] Large RAM offset detected (%s) - likely wrong, clearing", string.toSize(size))
+							process:clearGamecubeRAMOffset()
+							-- Don't start detection cooldown since we cleared the offset
+							return
+						end
+						
+						detectCooldownUntil = t + 0.75
+						stableDetectCount = 0
+						noneDetectCount = 0
+						lastDetectGid = GAME_NONE
+						lastDetectVersion = 0
+						lastDetectVcid = VC_NONE
+					end
+				end
 			end
 		end
 	else
+		offsetStuckSince = 0
 		memory.updatememory()
 
 		local frame = memory.frame or 0
@@ -628,6 +957,8 @@ function memory.reset()
 end
 
 function memory.updatememory()
+	-- Avoid reads if the emulator process has exited mid-frame
+	if not process:hasProcess() then return end
 	memory.findGame()
 
 	if memory.ingame then
@@ -720,6 +1051,15 @@ do
 			end
 		end
 	end
+end
+
+function memory.isHookedForUI()
+	local t = love.timer.getTime()
+	-- If we're in a suppression period, pretend we're hooked to prevent UI flashing
+	if t < suppressWaitingTitleUntil then
+		return true
+	end
+	return memory.hooked
 end
 
 return memory
