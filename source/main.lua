@@ -219,8 +219,8 @@ do
 end
 
 function love.update(dt)
-	--web.update()
-	--downloader.update()
+	web.update()
+	downloader.update()
 	music.update()
 	memory.update() -- Look for Dolphin.exe
 	notification.update(8, 0)
@@ -812,6 +812,6 @@ end
 function love.quit()
 	PANEL_SETTINGS:OnClosed()
 	gui.shutdown()
-	--web.close()
-	--downloader.close()
+	web.close()
+	downloader.close()
 end
