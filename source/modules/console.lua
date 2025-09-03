@@ -156,7 +156,7 @@ function love.console(opened)
 	local chdl = kernel.GetConsoleWindow()
 	if not chdl then return end
 	if opened then
-		love.setConsoleTitle("M'Overlay Console")
+		love.setConsoleTitle("K'Overlay Console")
 		love.enableConsoleColors()
 		user.ShowWindow(chdl, SW_SHOW)
 	else
@@ -165,6 +165,6 @@ function love.console(opened)
 end
 
 if love.hasConsole() then
-	love.setConsoleTitle("M'Overlay Console")
+	love.setConsoleTitle("K'Overlay Console")
 	love.enableConsoleColors()
 end
