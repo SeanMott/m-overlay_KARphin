@@ -502,7 +502,7 @@ function memory.loadGameScript(path)
 
 	if status then
 		memory.game = game
-		log.info("[KARPHIN] Loaded game config: %s", path)
+		log.info("[DOLPHIN] Loaded game config: %s", path)
 		notification.info(("Game %q detected"):format(path))
 		if not game.translateCStick then
 			game.translateCStick = game.translateJoyStick
@@ -511,7 +511,7 @@ function memory.loadGameScript(path)
 	else
 		notification.error(("Unsupported game %s"):format(path))
 		notification.error("Playing slippi netplay? Press 'escape' and enable Rollback/Netplay mode")
-		log.error("[KARPHIN] %s", game) -- game variable is an error string
+		log.error("[DOLPHIN] %s", game) -- game variable is an error string
 	end
 end
 
@@ -522,8 +522,8 @@ function memory.findGame()
 
 	-- Force the GAMEID and VERSION to be Melee 1.02, since Fizzi seems to be using the gameid address space for something..
 	if not memory.isSupportedGame(gid, version) and gid ~= GAME_NONE and PANEL_SETTINGS:IsSlippiNetplay() then
-		gid = "GKYE01"
-		version = "0"
+		gid = "GALE01"
+		version = 0x02
 	end
 
 	-- When playing Slippi netplay.. the game ID can and will change..
@@ -535,8 +535,8 @@ function memory.findGame()
 		memory.ingame = true
 		memory.vcid = vcid
 
-		log.info("[KARPHIN] Game: %s", vcid)
-		love.updateTitle(("K'Overlay - KARphin hooked (%s)"):format(vcid))
+		log.info("[DOLPHIN] Game: %s", vcid)
+		love.updateTitle(("M'Overlay - Dolphin hooked (%s)"):format(vcid))
 
 		-- Check for VC clones
 		vcid = memory.vcclones[vcid] or vcid
@@ -549,8 +549,8 @@ function memory.findGame()
 		memory.gameid = gid
 		memory.version = version
 
-		log.info("[KARPHIN] Game: %s revision %i", gid, version)
-		love.updateTitle(("K'Overlay - KARphin hooked (%s-%i)"):format(gid, version))
+		log.info("[DOLPHIN] Game: %s revision %i", gid, version)
+		love.updateTitle(("M'Overlay - Dolphin hooked (%s-%i)"):format(gid, version))
 
 		-- See if this GameID is a clone of another
 		local clone = memory.clones[gid] and memory.clones[gid][version] or nil
@@ -568,10 +568,10 @@ function memory.findGame()
 		memory.vcid = vcid
 		memory.version = version
 
-		love.updateTitle("K'Overlay - KARphin hooked")
+		love.updateTitle("M'Overlay - Dolphin hooked")
 		memory.runhook("OnGameClosed")
 		memory.process:clearGamecubeRAMOffset() -- Clear the memory address space location (When a new game is opened, we recheck this)
-		log.info("[KARPHIN] Game closed..")
+		log.info("[DOLPHIN] Game closed..")
 	end
 end
 
@@ -580,8 +580,8 @@ function memory.update()
 
 	if not process:isProcessActive() and process:hasProcess() then
 		process:close()
-		love.updateTitle("K'Overlay - Waiting for KARphin..")
-		log.info("[KARPHIN] Unhooked")
+		love.updateTitle("M'Overlay - Waiting for Dolphin..")
+		log.info("[DOLPHIN] Unhooked")
 		memory.hooked = false
 	end
 
@@ -592,11 +592,11 @@ function memory.update()
 		if timer <= t then
 			timer = t + 0.5
 			if process:findprocess() then
-				log.info("[KARPHIN] Hooked")
-				love.updateTitle("K'Overlay - KARphin hooked")
+				log.info("[DOLPHIN] Hooked")
+				love.updateTitle("M'Overlay - Dolphin hooked")
 				memory.hooked = true
 			elseif not process:hasGamecubeRAMOffset() and process:findGamecubeRAMOffset() then
-				log.debug("[KARPHIN] Watching ram address: 0x%X [%s]", process:getGamecubeRAMOffset(), string.toSize(process:getGamecubeRAMSize()))
+				log.debug("[DOLPHIN] Watching ram address: 0x%X [%s]", process:getGamecubeRAMOffset(), string.toSize(process:getGamecubeRAMSize()))
 			end
 		end
 	else

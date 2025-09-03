@@ -31,6 +31,9 @@ local gui = require("gui")
 
 local ease = require("ease")
 
+local web = require("web")
+local downloader = require("downloader")
+
 local graphics = love.graphics
 local newImage = graphics.newImage
 
@@ -113,9 +116,9 @@ function love.load(args, unfilteredArg)
 	overlay.init()
 
 	if memory.hasPermissions() then
-		love.updateTitle("K'Overlay - Waiting for Dolphin...")
+		love.updateTitle("M'Overlay - Waiting for Dolphin...")
 	else
-		love.updateTitle("K'Overlay - Invalid permissions...")
+		love.updateTitle("M'Overlay - Invalid permissions...")
 		--notification.error()
 	end
 
@@ -138,7 +141,7 @@ function love.load(args, unfilteredArg)
 		end
 	end
 
-	log.debug("K'Overlay (%s)", love.getMOverlayVersion())
+	log.debug("M'Overlay (%s)", love.getMOverlayVersion())
 	log.debug(string.format("Love2D %d.%d.%d - %s", love.getVersion()))
 	log.debug("%s (%s - %s)", _VERSION, jit.version, jit.arch)
 	log.debug("System: %s", jit.os)
@@ -216,6 +219,8 @@ do
 end
 
 function love.update(dt)
+	web.update()
+	downloader.update()
 	music.update()
 	memory.update() -- Look for Dolphin.exe
 	notification.update(8, 0)
@@ -679,7 +684,7 @@ function love.draw()
 			love.drawNotificationText(slippi and "Waiting for melee" or "Waiting for game")
 		else
 			love.drawTrobber()
-			love.drawNotificationText("Waiting for KARphin")
+			love.drawNotificationText("Waiting for dolphin")
 		end
 	end
 
@@ -807,4 +812,6 @@ end
 function love.quit()
 	PANEL_SETTINGS:OnClosed()
 	gui.shutdown()
+	web.close()
+	downloader.close()
 end

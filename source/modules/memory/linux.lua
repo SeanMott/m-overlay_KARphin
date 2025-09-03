@@ -123,10 +123,6 @@ end
 
 
 local valid_process_names = {
-	["karphin"] = true,
-	["KARphin"] = true,
-	["karphin-emu"] = true,
-	["KARphin-emu"] = true,
 	["AppRun"] = true,
 	["AppRun.wrapped"] = true,
 	["dolphin-emu"] = true,

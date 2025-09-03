@@ -119,7 +119,6 @@ function MEMORY:hasPermissions()
 end
 
 local valid_process_names = {
-	["KARphin"] = true,
 	["Dolphin"] = true,
 	["Slippi Dolphin"] = true,
 	["DolphinWx"] = true,

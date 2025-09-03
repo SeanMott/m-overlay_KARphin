@@ -5,6 +5,7 @@ local json = require("serializer.json")
 local notification = require("notification")
 local music = require("music")
 local overlay = require("overlay")
+local updater = require("updater")
 
 require("extensions.math")
 
@@ -125,7 +126,7 @@ function PANEL:Settings()
 	netplay:SetTooltipTitle("ROLLBACK")
 	netplay:SetTooltipBody([[Allows the overlay to work properly when playing Slippi online. Will also actively change the overylay to display your current port.
 
-WARNING: This tricks K'Overlay into thinking Melee is being played when an invalid game is detected. When playing other games, it is recommended to set this to OFF.]])
+WARNING: This tricks M'Overlay into thinking Melee is being played when an invalid game is detected. When playing other games, it is recommended to set this to OFF.]])
 	local mirror = self.SLIPPI.MODE:AddOption(SLIPPI_REPLAY, "Melee: Replay/Mirror")
 	mirror:SetTooltipParent(self.SLIPPI.MODE)
 	mirror:SetTooltipTitle("REPLAY/MIRROR")
@@ -302,7 +303,7 @@ This will only function correctly if you are capturing this window in OBS with a
 	self.CONFIGDIR:SetImage("textures/gui/folder_wrench.png")
 	self.CONFIGDIR:Dock(DOCK_BOTTOM)
 	self.CONFIGDIR:SetTooltipTitle("CONFIGURATION DIRECTORY")
-	self.CONFIGDIR:SetTooltipBody([[This button will open the file explorer to K'Overlay's config directory.
+	self.CONFIGDIR:SetTooltipBody([[This button will open the file explorer to M'Overlay's config directory.
 
 This is also the same directory you use to place all your music for Melee.]])
 
@@ -370,6 +371,17 @@ This is also the same directory you use to place all your music for Melee.]])
 
 	function VERSION:OnClick()
 		love.system.openURL(("https://github.com/bkacjios/m-overlay/releases/tag/v%s"):format(love.getMOverlayVersion()))
+	end
+
+	if _LAUNCHER then
+		local UPDATE = self.ABOUT.RIGHT:Add("ButtonIcon")
+		UPDATE:SetImage("textures/gui/wrench.png")
+		UPDATE:SetText("Check for update")
+		UPDATE:Dock(DOCK_TOP)
+
+		function UPDATE:OnClick()
+			updater.check()
+		end
 	end
 
 	self.ABOUT.SOCIALS = self.ABOUT.RIGHT:Add("Panel")
