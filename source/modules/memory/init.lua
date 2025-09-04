@@ -641,9 +641,9 @@ function memory.findGame()
 					-- Additional check: verify process is actually still running before forcing rehook
 					if process:isProcessActive() then
 						-- Process is still active, but we've been reading NONE for a very long time
-						-- Check if we have a clearly wrong RAM offset (256MB when no game is loaded)
+						-- Check if we have a clearly wrong RAM offset (512MB when no game is loaded)
 						local currentSize = process:getGamecubeRAMSize()
-						if currentSize > 64 * 1024 * 1024 then -- 64MB threshold
+						if currentSize > 512 * 1024 * 1024 then -- 512MB threshold (increased from 64MB for netplay compatibility)
 							log.debug("[KARPHIN] Process active but stuck reading NONE with large RAM offset (%s); clearing offset", string.toSize(currentSize))
 							process:clearGamecubeRAMOffset()
 							noneWhileHookedCount = 0
@@ -865,8 +865,8 @@ function memory.update()
 					local size = process:getGamecubeRAMSize()
 					log.debug("[KARPHIN] Watching ram address: 0x%X [%s]", offset, string.toSize(size))
 					
-					-- Validate the RAM offset - if it's 256MB, it's likely wrong when no game is loaded
-					if size > 64 * 1024 * 1024 then -- 64MB threshold
+					-- Validate the RAM offset - if it's 512MB, it's likely wrong when no game is loaded
+					if size > 512 * 1024 * 1024 then -- 512MB threshold (increased from 64MB for netplay compatibility)
 						log.debug("[KARPHIN] Large RAM offset detected (%s) - likely wrong, clearing", string.toSize(size))
 						process:clearGamecubeRAMOffset()
 						-- Don't start detection cooldown since we cleared the offset
@@ -909,8 +909,8 @@ function memory.update()
 						local size = process:getGamecubeRAMSize()
 						log.debug("[KARPHIN] Watching ram address: 0x%X [%s]", offset, string.toSize(size))
 						
-						-- Validate the RAM offset - if it's 256MB, it's likely wrong when no game is loaded
-						if size > 64 * 1024 * 1024 then -- 64MB threshold
+						-- Validate the RAM offset - if it's 512MB, it's likely wrong when no game is loaded
+						if size > 512 * 1024 * 1024 then -- 512MB threshold (increased from 64MB for netplay compatibility)
 							log.debug("[KARPHIN] Large RAM offset detected (%s) - likely wrong, clearing", string.toSize(size))
 							process:clearGamecubeRAMOffset()
 							-- Don't start detection cooldown since we cleared the offset
