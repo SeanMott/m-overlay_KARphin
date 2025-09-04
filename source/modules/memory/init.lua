@@ -575,7 +575,7 @@ local OFFSET_STALE_SECS = 0.6
 
 -- Watchdog for bad handles when reads return NONE continuously
 local noneWhileHookedCount = 0
-local NONE_HANDLE_STALE_FRAMES = 120 -- Increased from 60 to be much less aggressive
+local NONE_HANDLE_STALE_FRAMES = 360 -- Increased from 120 to be much more patient during netplay (6 seconds at 60fps)
 
 -- Track when process was last seen to avoid flashing during rehooking
 local lastProcessSeenTime = love.timer.getTime()
@@ -820,6 +820,10 @@ end
 function memory.update()
 	if not memory.hasPermissions() then return end
 
+	-- Add timeout protection for the entire update function
+	local updateStartTime = love.timer.getTime()
+	local maxUpdateTime = 0.5 -- 500ms timeout for entire update
+
 	if not process:isProcessActive() and process:hasProcess() then
 		-- Process handle is stale, close it but don't update title yet
 		process:close()
@@ -855,6 +859,13 @@ function memory.update()
 			offsetStuckSince = 0
 			if timer <= t then
 				timer = t + 0.5
+				
+				-- Check timeout to prevent hanging
+				if love.timer.getTime() - updateStartTime > maxUpdateTime then
+					log.warn("[KARPHIN] Update timeout during process discovery - skipping this frame")
+					return
+				end
+				
 				if process:findprocess() then
 					log.info("[KARPHIN] Hooked")
 					love.updateTitle("K'Overlay - KARphin hooked")
@@ -898,6 +909,13 @@ function memory.update()
 					process:clearGamecubeRAMOffset()
 					log.debug("[KARPHIN] RAM offset stale; clearing and rescanning")
 					offsetStuckSince = 0
+					
+					-- Check timeout to prevent hanging
+					if love.timer.getTime() - updateStartTime > maxUpdateTime then
+						log.warn("[KARPHIN] Update timeout during stale offset handling - skipping this frame")
+						return
+					end
+					
 					-- Try immediately to find process and offset again
 					if process:findprocess() then
 						log.info("[KARPHIN] Hooked")
@@ -929,6 +947,13 @@ function memory.update()
 		end
 	else
 		offsetStuckSince = 0
+		
+		-- Check timeout before memory update
+		if love.timer.getTime() - updateStartTime > maxUpdateTime then
+			log.warn("[KARPHIN] Update timeout before memory update - skipping this frame")
+			return
+		end
+		
 		memory.updatememory()
 
 		local frame = memory.frame or 0
@@ -959,10 +984,27 @@ end
 function memory.updatememory()
 	-- Avoid reads if the emulator process has exited mid-frame
 	if not process:hasProcess() then return end
+	
+	-- Add timeout protection for memory reads
+	local startTime = love.timer.getTime()
+	local maxReadTime = 0.1 -- 100ms timeout for memory operations
+	
 	memory.findGame()
 
 	if memory.ingame then
 		for addr, value in pairs(memory.map) do
+			-- Check timeout to prevent hanging
+			if love.timer.getTime() - startTime > maxReadTime then
+				log.warn("[KARPHIN] Memory update timeout - stopping memory reads to prevent hang")
+				break
+			end
+			
+			-- Additional safety check for process validity
+			if not process:hasProcess() or not process:isProcessActive() then
+				log.warn("[KARPHIN] Process became invalid during memory update - stopping")
+				break
+			end
+			
 			value:update()
 		end
 	end

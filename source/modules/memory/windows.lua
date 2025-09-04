@@ -294,18 +294,47 @@ local regionptr = new("ULONG_PTR*[1]")
 local NULL = cast("ULONG_PTR", 0x00000000)
 local GC_RAM_SIZE = cast("ULONG_PTR", 0x2000000)
 
+-- Track failed scans to reduce spam
+local lastFailedScanTime = 0
+local FAILED_SCAN_COOLDOWN = 5.0 -- Don't spam warnings for 5 seconds
+
 function MEMORY:findGamecubeRAMOffset()
+	-- Rate limit failed scans to reduce spam
+	local now = love.timer.getTime()
+	if lastFailedScanTime > 0 and now - lastFailedScanTime < FAILED_SCAN_COOLDOWN then
+		return false -- Skip scan if we recently failed
+	end
+
 	local info = MEMORY_BASIC_INFORMATION_PTR()[0]
 
-	local address = regionptr[0]
+	-- Start scanning from a reasonable address (0x1000)
+	local address = cast("ULONG_PTR", 0x1000)
+	local iterations = 0
+	local maxIterations = 5000 -- Increased limit for larger memory layouts
 
 	-- Scan all virtual address spaces the process is using.
-	while kernel.VirtualQueryEx(self.process_handle, address, info, sizeof(info)) == sizeof(info) do
-		address = address + info.RegionSize / sizeof(info.RegionSize)
+	while kernel.VirtualQueryEx(self.process_handle, cast("LPCVOID", address), info, sizeof(info)) == sizeof(info) do
+		iterations = iterations + 1
+		if iterations > maxIterations then
+			local now = love.timer.getTime()
+			if now - lastFailedScanTime > FAILED_SCAN_COOLDOWN then
+				log.warn("[MEMORY] findGamecubeRAMOffset exceeded max iterations (%d) - stopping scan", maxIterations)
+				lastFailedScanTime = now
+			end
+			break
+		end
+		
+		-- Properly advance to the next region
+		address = address + tonumber(info.RegionSize)
 
 		-- Dolphin stores the GameCube RAM address space in 32MB chunks.
 		-- Extended memory override can allow up to 64MB.
 		if (info.RegionSize >= GC_RAM_SIZE and info.RegionSize % GC_RAM_SIZE == 0 and info.Type == MEM_MAPPED) then
+			-- Debug: Log potential matches (but only occasionally to reduce spam)
+			if iterations % 100 == 0 then
+				log.debug("[MEMORY] Potential GC RAM region found: base=0x%X, size=%s, type=0x%X", 
+					tonumber(info.BaseAddress), string.toSize(tonumber(info.RegionSize)), tonumber(info.Type))
+			end
 			local wsinfo = PSAPI_WORKING_SET_EX_INFORMATION_PTR()[0]
 			wsinfo.VirtualAddress = info.BaseAddress
 
@@ -321,6 +350,7 @@ function MEMORY:findGamecubeRAMOffset()
 					--log.debug("%08X %x", tonumber(base), tonumber(region))
 					self.dolphin_base_addr = base
 					self.dolphin_addr_size = region
+					lastFailedScanTime = 0 -- Reset failed scan counter on success
 					return true
 				end
 			end
