@@ -299,6 +299,11 @@ local lastFailedScanTime = 0
 local FAILED_SCAN_COOLDOWN = 5.0 -- Don't spam warnings for 5 seconds
 
 function MEMORY:findGamecubeRAMOffset()
+	-- Don't scan if process is not active
+	if not self:hasProcess() or not self:isProcessActive() then
+		return false
+	end
+
 	-- Rate limit failed scans to reduce spam
 	local now = love.timer.getTime()
 	if lastFailedScanTime > 0 and now - lastFailedScanTime < FAILED_SCAN_COOLDOWN then
@@ -373,6 +378,12 @@ local memread = ffi.new("SIZE_T[1]") -- How many bytes are read from memory
 function MEMORY:read(addr, output, size)
 	if not self:hasProcess() or not self:hasGamecubeRAMOffset() then return false end
 
+	-- Add additional safety checks
+	if not self.process_handle or not self.dolphin_base_addr then
+		log.warn("[MEMORY] Invalid process handle or base address")
+		return false
+	end
+
 	CAST_ADDR = cast("uint32_t", addr)
 
 	if CAST_ADDR >= WII_RAM_START and CAST_ADDR <= WII_RAM_END then
@@ -381,6 +392,12 @@ function MEMORY:read(addr, output, size)
 		CAST_ADDR = cast("uint32_t", CAST_ADDR % GC_RAM_START)
 	else
 		log.warn("[MEMORY] Attempt to read from invalid address %08X", tonumber(CAST_ADDR))
+		return false
+	end
+
+	-- Additional safety check for address calculation
+	if not self.dolphin_base_addr then
+		log.warn("[MEMORY] dolphin_base_addr is nil during read")
 		return false
 	end
 

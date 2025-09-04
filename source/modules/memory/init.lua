@@ -575,7 +575,7 @@ local OFFSET_STALE_SECS = 0.6
 
 -- Watchdog for bad handles when reads return NONE continuously
 local noneWhileHookedCount = 0
-local NONE_HANDLE_STALE_FRAMES = 360 -- Increased from 120 to be much more patient during netplay (6 seconds at 60fps)
+local NONE_HANDLE_STALE_FRAMES = 360 -- Legacy timeout (now overridden with 120 frames for RAM offset scenarios)
 
 -- Track when process was last seen to avoid flashing during rehooking
 local lastProcessSeenTime = love.timer.getTime()
@@ -637,7 +637,19 @@ function memory.findGame()
 		if (now - lastForcedRehookTime) > FORCED_REHOOK_COOLDOWN then
 			if gid == GAME_NONE and vcid == VC_NONE then
 				noneWhileHookedCount = noneWhileHookedCount + 1
-				if noneWhileHookedCount > NONE_HANDLE_STALE_FRAMES then
+				
+				-- Use different timeouts based on RAM size
+				local timeoutFrames = NONE_HANDLE_STALE_FRAMES -- Default to 6 seconds
+				local currentSize = process:getGamecubeRAMSize()
+				if currentSize <= 64 * 1024 * 1024 then -- 64MB or less
+					-- Small RAM offset - be aggressive (2 seconds)
+					timeoutFrames = 120
+				else
+					-- Large RAM offset (likely netplay) - be moderately patient (3 seconds)
+					timeoutFrames = 180
+				end
+				
+				if noneWhileHookedCount > timeoutFrames then
 					-- Additional check: verify process is actually still running before forcing rehook
 					if process:isProcessActive() then
 						-- Process is still active, but we've been reading NONE for a very long time
@@ -790,8 +802,27 @@ function memory.findGame()
 		memory.version = version
 
 		love.updateTitle("K'Overlay - KARphin hooked")
-		memory.runhook("OnGameClosed")
-		memory.process:clearGamecubeRAMOffset() -- Clear the memory address space location (When a new game is opened, we recheck this)
+		
+		-- Add timeout protection for game closing operations
+		local closeStartTime = love.timer.getTime()
+		local maxCloseTime = 0.2 -- 200ms timeout for closing operations
+		
+		-- Run hooks with timeout protection
+		local currentTime = love.timer.getTime()
+		if currentTime - closeStartTime < maxCloseTime then
+			memory.runhook("OnGameClosed")
+		else
+			log.warn("[KARPHIN] Game close timeout - skipping hooks")
+		end
+		
+		-- Clear RAM offset with timeout protection
+		currentTime = love.timer.getTime()
+		if currentTime - closeStartTime < maxCloseTime then
+			memory.process:clearGamecubeRAMOffset() -- Clear the memory address space location (When a new game is opened, we recheck this)
+		else
+			log.warn("[KARPHIN] Game close timeout - skipping RAM offset clear")
+		end
+		
 		log.info("[KARPHIN] Game closed..")
 	end
 
@@ -872,6 +903,12 @@ function memory.update()
 					memory.hooked = true
 					lastProcessSeenTime = t
 				elseif not process:hasGamecubeRAMOffset() and process:findGamecubeRAMOffset() then
+					-- Additional safety check: don't proceed if process is no longer active
+					if not process:isProcessActive() then
+						log.debug("[KARPHIN] Process no longer active - skipping RAM offset discovery")
+						return
+					end
+					
 					local offset = process:getGamecubeRAMOffset()
 					local size = process:getGamecubeRAMSize()
 					log.debug("[KARPHIN] Watching ram address: 0x%X [%s]", offset, string.toSize(size))
@@ -923,6 +960,12 @@ function memory.update()
 						memory.hooked = true
 						lastProcessSeenTime = t
 					elseif process:findGamecubeRAMOffset() then
+						-- Additional safety check: don't proceed if process is no longer active
+						if not process:isProcessActive() then
+							log.debug("[KARPHIN] Process no longer active - skipping RAM offset discovery")
+							return
+						end
+						
 						local offset = process:getGamecubeRAMOffset()
 						local size = process:getGamecubeRAMSize()
 						log.debug("[KARPHIN] Watching ram address: 0x%X [%s]", offset, string.toSize(size))
@@ -954,12 +997,21 @@ function memory.update()
 			return
 		end
 		
-		memory.updatememory()
+		-- Wrap memory update in error protection
+		local success, err = xpcall(memory.updatememory, debug.traceback)
+		if not success then
+			log.error("[KARPHIN] Error in memory update: %s", err)
+			return
+		end
 
 		local frame = memory.frame or 0
 		if frame == 0 or memory.game_frame ~= frame then
 			memory.game_frame = frame
-			memory.runhooks()
+			-- Wrap hook processing in error protection
+			local success, err = xpcall(memory.runhooks, debug.traceback)
+			if not success then
+				log.error("[KARPHIN] Error in hook processing: %s", err)
+			end
 		end
 	end
 end
@@ -989,7 +1041,12 @@ function memory.updatememory()
 	local startTime = love.timer.getTime()
 	local maxReadTime = 0.1 -- 100ms timeout for memory operations
 	
-	memory.findGame()
+	-- Wrap findGame in error protection
+	local success, err = xpcall(memory.findGame, debug.traceback)
+	if not success then
+		log.error("[KARPHIN] Error in findGame: %s", err)
+		return
+	end
 
 	if memory.ingame then
 		for addr, value in pairs(memory.map) do
@@ -1005,7 +1062,12 @@ function memory.updatememory()
 				break
 			end
 			
-			value:update()
+			-- Wrap value update in error protection
+			local success, err = xpcall(value.update, debug.traceback, value)
+			if not success then
+				log.error("[KARPHIN] Error updating value at 0x%X: %s", addr, err)
+				-- Continue with other values instead of crashing
+			end
 		end
 	end
 end
